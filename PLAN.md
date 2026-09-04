@@ -95,8 +95,9 @@ Deliverables:
 - Phase 1 prototype + measurements: done (4 labels). See `docs/protocol-b4.md`.
 - Phase 2 filter: done, verified over serial harness and through the installed
   queue with the stock usb backend (back-channel ACKs confirmed).
-- Phase 3 PPD + queue: installed as `NIIMBOT_B4`; presets, density, label type,
-  copies exercised via `lp`. GUI print-dialog check pending.
+- Phase 3 PPD + queue: installed as `NIIMBOT_B4`; 100x150 preset, density
+  (3 vs 5 visibly different), copies=2 verified via `lp`; Preview print dialog
+  shows sizes/options and prints correctly. 11 labels used in total.
 - Phase 4 packaging: `make install` / `make uninstall`; `.pkg` not started.
 
 ## Phases
