@@ -37,4 +37,26 @@ python3 -m venv venv && ./venv/bin/pip install pillow pyserial
 ./venv/bin/python tools/niimbot.py print label.png --density 3 --copies 1
 ```
 
-License: MIT.
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## Notice / acknowledgements
+
+The Niimbot packet protocol used here was learned from prior open-source
+reverse-engineering work and then verified against a real B4 (see
+[docs/protocol-b4.md](docs/protocol-b4.md)). No code was copied from these
+projects, but this driver would not exist without them:
+
+- [eigger/hass-niimbot](https://github.com/eigger/hass-niimbot) (MIT) — the
+  most complete Python implementation: command set, status/RFID parsers, row
+  encoding, and the vendor device table analysis.
+- [MultiMote/niimbluelib](https://github.com/MultiMote/niimbluelib) (MIT) —
+  clean TypeScript protocol reference: packet generator, print task sequences,
+  image encoder.
+- [AndBondStyle/niimprint](https://github.com/AndBondStyle/niimprint) (MIT,
+  originally by kjy00302) — the first USB-serial transport for these printers.
+
+Model capability data (dpi, print width, label types, density range) comes
+from NIIMBOT's own published device tables. NIIMBOT is a trademark of its
+owner; this project is not affiliated with or endorsed by NIIMBOT.
