@@ -4,6 +4,25 @@ A CUPS printer driver (PPD + raster filter) for the NIIMBOT B4 thermal label
 printer over USB, so any macOS app can print labels through the normal print
 dialog.
 
+This coding work was done by Claude. I was annoyed that the macOS Niimbot app
+didn't have support for their B4 printer, and that there was no macOS driver.
+Inspired by [this article](https://schlarp.com/posts/everything-i-own-owned/),
+I asked Claude to create me a printer driver for the B4 and it works 🎉.
+
+It's currently USB-only and has no Bluetooth support. I've also only tested it
+on 100x150mm labels, but it should work on other sizes. It uses the deprecated
+CUPS driver path because it was the easiest but I'll probably add Bluetooth
+and update to a newer driver type. It also doesn't have an installer, you have
+to add the driver manually using the terminal. But it works.
+
+I'm constantly amazed at what these LLMs can do. If you'd told me three years
+ago that I could automatically reverse engineer and build a printer driver,
+I'd have thought you were nuts. So great for cases like this where the
+manufacturer is lazy.
+
+I have no other Niimbot models so although Claude could probably add support
+for them, I have no way to test them. So it's B4 only.
+
 Status: **work in progress**. See [PLAN.md](PLAN.md) and
 [docs/protocol-b4.md](docs/protocol-b4.md).
 
