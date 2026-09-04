@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 /* ---- protocol constants -------------------------------------------- */
@@ -67,9 +68,30 @@ static unsigned page_index = 0;  /* from 0xE0, if the firmware sends it */
 
 static void on_term(int sig) { (void)sig; cancelled = 1; }
 
+/* Monotonic seconds; used for every deadline so a flood of packets from a
+ * misbehaving device cannot stall the clock. */
+static double now_s(void)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
+static void sleep_s(double s)
+{
+  if (s <= 0) return;
+  if (s > 600) s = 600;
+  struct timespec ts = { (time_t)s, (long)((s - (double)(time_t)s) * 1e9) };
+  while (nanosleep(&ts, &ts) != 0 && errno == EINTR && !cancelled) { }
+}
+
 /* ---- packet I/O ----------------------------------------------------- */
 static void send_packet(unsigned char cmd, const unsigned char *data, size_t len)
 {
+  if (len > 255) { /* protocol length byte; never reachable after header validation */
+    fprintf(stderr, "ERROR: Internal error: packet 0x%02x too long (%zu bytes)\n", cmd, len);
+    exit(1);
+  }
   unsigned char hdr[4] = { 0x55, 0x55, cmd, (unsigned char)len };
   unsigned char cs = cmd ^ (unsigned char)len;
   unsigned char tail[3];
@@ -160,19 +182,18 @@ static int transceive(unsigned char cmd, const unsigned char *req, size_t reqlen
   flush_out();
   if (!ack_enabled || ack_available == 0) return 0;
 
-  double deadline = timeout;
+  double deadline = now_s() + timeout;
   unsigned char c; unsigned char d[256]; size_t n;
-  while (deadline > 0) {
-    double slice = deadline < 0.25 ? deadline : 0.25;
+  for (;;) {
+    double remaining = deadline - now_s();
+    if (remaining <= 0 || cancelled) return 0;
+    double slice = remaining < 0.25 ? remaining : 0.25;
     if (read_packet(&c, d, &n, slice)) {
       if (c == resp) { if (data) memcpy(data, d, n); if (len) *len = n; ack_available = 1; return 1; }
       if (c == RSP_ERROR || c == RSP_NOT_SUPPORTED) return 0; /* caller checks printer_error */
-      continue; /* unsolicited; keep waiting */
+      /* unsolicited; keep waiting, deadline is wall-clock so a flood cannot stall us */
     }
-    deadline -= slice;
-    if (cancelled) return 0;
   }
-  return 0;
 }
 
 static void fail(const char *msg) __attribute__((noreturn));
@@ -259,35 +280,30 @@ static void wait_print_complete(unsigned copies, double timeout)
 {
   unsigned char st[256]; size_t len;
   int in_page = 0; unsigned completed = 0;
-  double waited = 0;
-  int last_pct = -1;
+  double deadline = now_s() + timeout;
 
   if (!ack_enabled || ack_available != 1) {
-    /* no feedback: allow ~1 s per 100 rows per copy, generous */
-    usleep((useconds_t)(timeout * 1e6 / 4));
+    /* no feedback: wait a fixed fraction of the budget */
+    sleep_s(timeout / 4);
     return;
   }
-  while (waited < timeout && !cancelled) {
+  while (now_s() < deadline && !cancelled) {
     drain();
     if (printer_error) fail("printer reported an error while printing");
     if (page_index >= copies) return;
     if (!transceive(CMD_PRINT_STATUS, (const unsigned char *)"\x01", 1, RSP_PRINT_STATUS, st, &len, 3.0)) {
       if (printer_error) fail("printer reported an error while printing");
-      waited += 3.0;
       continue;
     }
     if (len >= 4) {
       unsigned page = (st[0] << 8) | st[1];
       unsigned pp = st[2], fp = st[3];
-      int pct = (int)((pp + fp) / 2);
-      if (pct != last_pct) { last_pct = pct; }
       if (pp < 100 || fp < 100) in_page = 1;
       else if (in_page) { in_page = 0; completed++; }
       if (page >= copies && pp >= 100 && fp >= 100) return;
       if (completed >= copies) return;
     }
-    usleep(250000);
-    waited += 0.25;
+    sleep_s(0.25);
   }
   if (cancelled) fail("job cancelled");
   fputs("WARNING: Print completion not confirmed by printer\n", stderr);
@@ -358,18 +374,35 @@ int main(int argc, char *argv[])
     unsigned rows = hdr.cupsHeight;
     unsigned cols = hdr.cupsWidth;
     size_t bpl = hdr.cupsBytesPerLine;
-    size_t rowbytes = (cols + 7) / 8;
+    size_t rowbytes = ((size_t)cols + 7) / 8;              /* size_t: no 32-bit wrap */
     unsigned cols_sent = (unsigned)(rowbytes * 8); /* row data is byte-granular; padding bits are white */
 
     fprintf(stderr, "PAGE: %u %u\n", page, copies);
     fprintf(stderr, "DEBUG: page %u: %ux%u px, %u bpp, cs %d, bpl %zu, copies %u, density %d, label type %d\n",
             page, cols, rows, hdr.cupsBitsPerPixel, hdr.cupsColorSpace, bpl, copies, density, label_type);
 
-    if (hdr.cupsBitsPerPixel != 1 && hdr.cupsBitsPerPixel != 8) {
+    /*
+     * The raster header is untrusted: any local user can hand cupsd a
+     * hand-made application/vnd.cups-raster file, and libcups does not
+     * cross-check these fields. Reject anything inconsistent before it is
+     * used to size buffers or protocol fields.
+     */
+    if (hdr.cupsBitsPerPixel != 1 && hdr.cupsBitsPerPixel != 8)
       fail("Unsupported raster format (need 1-bit or 8-bit grayscale)");
-    }
-    if (rowbytes > 250) fail("Page wider than the printer supports");
-    if (rows > 65535) fail("Page longer than the printer supports");
+    if (hdr.cupsBitsPerPixel == 1 && hdr.cupsBitsPerColor != 1)
+      fail("Unsupported raster format (1-bit pixel must be 1-bit color)");
+    if (hdr.cupsBitsPerPixel == 8 && hdr.cupsBitsPerColor != 8)
+      fail("Unsupported raster format (8-bit pixel must be 8-bit color)");
+    if (hdr.cupsColorSpace != CUPS_CSPACE_K && hdr.cupsColorSpace != CUPS_CSPACE_W
+        && hdr.cupsColorSpace != CUPS_CSPACE_SW)
+      fail("Unsupported raster color space (need K or W grayscale)");
+    if (cols == 0 || rows == 0) fail("Empty page");
+    if (rowbytes > 249) fail("Page wider than the printer supports");   /* 6-byte row header + data <= 255 */
+    if (rows > 65535) fail("Page longer than the printer supports");    /* protocol u16 */
+    if (bpl == 0 || bpl > (64u * 1024u)) fail("Invalid raster bytes-per-line");
+    if (hdr.cupsBitsPerPixel == 1 && bpl < rowbytes) fail("Invalid raster bytes-per-line for width");
+    if (hdr.cupsBitsPerPixel == 8 && bpl < cols) fail("Invalid raster bytes-per-line for width");
+    if (copies > 999) fail("Too many copies (max 999)");
 
     unsigned char *line = malloc(bpl);
     unsigned char *row = malloc(rowbytes);
