@@ -15,6 +15,20 @@ Status: **work in progress**. See [PLAN.md](PLAN.md) and
   over the USB serial port. Needs `pillow` and `pyserial` (see `venv`).
 - `docs/` — protocol notes and test-print logs.
 
+## Install
+
+```bash
+make
+sudo make install      # copies filter + PPD to /Library/Printers/NIIMBOT, creates queue NIIMBOT_B4
+lp -d NIIMBOT_B4 -o PageSize=100x150mm docs/ruler-100x150.pdf
+```
+
+Options (print dialog "Printer Settings" pane or `-o`): `niimbotDensity=1..5`,
+`niimbotLabelType=1|2|5` (gap / black mark / transparent), `niimbotAck=On|Off`.
+`-o niimbotDebug=1` dumps printer replies to `/var/log/cups/error_log`.
+
+`sudo make uninstall` removes the queue and the files.
+
 ## Quick protocol check
 
 ```bash
