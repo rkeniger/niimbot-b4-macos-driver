@@ -1,0 +1,78 @@
+// PPD source for the NIIMBOT B4 label printer. Compile with:
+//   ppdc -d build ppd/niimbot-b4.drv
+//
+// Geometry: 203 dpi, labels fed portrait, printer centres the image on the
+// head. Width 20-108 mm, length 20-350 mm (vendor limits).
+
+#media "100x150mm/100 x 150 mm" 100mm 150mm
+#media "100x100mm/100 x 100 mm" 100mm 100mm
+#media "100x180mm/100 x 180 mm" 100mm 180mm
+#media "100x50mm/100 x 50 mm"   100mm 50mm
+#media "100x30mm/100 x 30 mm"   100mm 30mm
+#media "75x100mm/75 x 100 mm"   75mm 100mm
+#media "70x40mm/70 x 40 mm"     70mm 40mm
+#media "60x40mm/60 x 40 mm"     60mm 40mm
+#media "50x80mm/50 x 80 mm"     50mm 80mm
+#media "50x30mm/50 x 30 mm"     50mm 30mm
+#media "40x30mm/40 x 30 mm"     40mm 30mm
+#media "30x20mm/30 x 20 mm"     30mm 20mm
+
+{
+  Manufacturer "NIIMBOT"
+  ModelName "B4"
+  ModelNumber 6656
+  Version 0.1
+  PCFileName "niimbot-b4.ppd"
+
+  Attribute "NickName" "" "NIIMBOT B4 (203 dpi)"
+  Attribute "ShortNickName" "" "NIIMBOT B4"
+  Attribute "1284DeviceID" "" "MFG:NIIMBOT;MDL: B4;CMD:ESC;"
+  Attribute "PSVersion" "" "(3010.000) 0"
+  Attribute "LanguageLevel" "" "3"
+  Attribute "DefaultColorSpace" "" "Gray"
+  Attribute "TTRasterizer" "" "Type42"
+
+  Filter application/vnd.cups-raster 100 /Library/Printers/NIIMBOT/rastertoniimbot
+
+  ColorDevice No
+  ColorModel Gray/Grayscale k chunky 0
+  Resolution k 1 0 0 0 "203dpi/203 DPI"
+  HWMargins 0 0 0 0
+  Throughput 1
+  ManualCopies No
+  Duplex None
+
+  VariablePaperSize Yes
+  MinSize 20mm 20mm
+  MaxSize 108mm 350mm
+
+  *MediaSize 100x150mm
+  MediaSize 100x100mm
+  MediaSize 100x180mm
+  MediaSize 100x50mm
+  MediaSize 100x30mm
+  MediaSize 75x100mm
+  MediaSize 70x40mm
+  MediaSize 60x40mm
+  MediaSize 50x80mm
+  MediaSize 50x30mm
+  MediaSize 40x30mm
+  MediaSize 30x20mm
+
+  Group "Printer/Printer Settings"
+    Option "niimbotDensity/Print Density" PickOne AnySetup 10
+      Choice "1/1 - Lightest" ""
+      Choice "2/2" ""
+      *Choice "3/3 - Normal" ""
+      Choice "4/4" ""
+      Choice "5/5 - Darkest" ""
+
+    Option "niimbotLabelType/Label Type" PickOne AnySetup 10
+      *Choice "1/Gap (die-cut)" ""
+      Choice "2/Black mark" ""
+      Choice "5/Transparent" ""
+
+    Option "niimbotAck/Wait for Printer Acknowledgements" PickOne AnySetup 10
+      *Choice "On/On (recommended)" ""
+      Choice "Off/Off (fire and forget)" ""
+}
