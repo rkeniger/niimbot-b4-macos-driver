@@ -88,3 +88,10 @@ label feed out, but the driver waits for feed=100 and page ≥ copies.
 
 `0x1A 01` RFID → `0x1B`: uuid[8], barcode (len-prefixed), serial
 (len-prefixed), total u16, used u16, type u8, capacity u16.
+
+## Settings persistence
+
+`SetDensity` / `SetLabelType` are stored in the printer and survive PrintEnd,
+CancelPrint, a new Connect, and a USB reconnect (verified). Every job therefore
+sets both explicitly; a job printed from another app with different options
+changes what the printer reports afterwards.

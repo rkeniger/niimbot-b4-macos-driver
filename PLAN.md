@@ -89,6 +89,16 @@ Deliverables:
    probe) used to answer the hardware questions before writing C. Kept in repo
    as a diagnostics tool (`info`, `status`, `print <png>`).
 
+## Status (2026-09-04)
+
+- Phase 0 scaffold: done.
+- Phase 1 prototype + measurements: done (4 labels). See `docs/protocol-b4.md`.
+- Phase 2 filter: done, verified over serial harness and through the installed
+  queue with the stock usb backend (back-channel ACKs confirmed).
+- Phase 3 PPD + queue: installed as `NIIMBOT_B4`; presets, density, label type,
+  copies exercised via `lp`. GUI print-dialog check pending.
+- Phase 4 packaging: `make install` / `make uninstall`; `.pkg` not started.
+
 ## Phases
 
 ### 0 — Scaffold
