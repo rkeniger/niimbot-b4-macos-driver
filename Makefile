@@ -29,11 +29,12 @@ BUILD        = build
 FILTER       = $(BUILD)/rastertoniimbot
 PPD          = $(BUILD)/niimbot-b4.ppd
 IPPCMD       = $(BUILD)/niimbot-ipp-print
+IPPEVE       = $(BUILD)/ippeveprinter
 PLIST        = $(BUILD)/$(AGENT).plist
 CORE         = filter/niimbot.c filter/niimbot.h
 HOSTARGS     = $(if $(IPP_HOST),<string>-n</string><string>$(IPP_HOST)</string>,)
 
-all: $(FILTER) $(PPD) $(IPPCMD) $(PLIST)
+all: $(FILTER) $(PPD) $(IPPCMD) $(IPPEVE) $(PLIST)
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -43,6 +44,11 @@ $(FILTER): filter/rastertoniimbot.c $(CORE) | $(BUILD)
 
 $(IPPCMD): filter/niimbot-ipp-print.c $(CORE) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ filter/niimbot-ipp-print.c filter/niimbot.c $(LDLIBS)
+
+# Apple's CUPS 2.3.6 ippeveprinter (see ippeve/README.md): the 2.3.4 one in
+# /usr/bin rejects chunked Create-Job requests, which breaks AirPrint from iOS.
+$(IPPEVE): ippeve/ippeveprinter.c ippeve/config.h | $(BUILD)
+	$(CC) -O2 -Wno-deprecated-declarations -Iippeve -o $@ ippeve/ippeveprinter.c $(LDLIBS) -lz -lpam
 
 $(PLIST): ipp/$(AGENT).plist.in Makefile | $(BUILD)
 	sed -e 's|@PREFIX@|$(PREFIX)|g' -e 's|@PORT@|$(IPP_PORT)|g' -e 's|@NAME@|$(IPP_NAME)|g' \
@@ -69,9 +75,10 @@ uninstall:
 	-rmdir $(PREFIX) 2>/dev/null
 
 # ---- IPP Everywhere / AirPrint ---------------------------------------
-install-ipp: $(IPPCMD) $(PLIST)
+install-ipp: $(IPPCMD) $(IPPEVE) $(PLIST)
 	install -d -m 755 $(PREFIX)
 	install -m 755 $(IPPCMD) $(PREFIX)/niimbot-ipp-print
+	install -m 755 $(IPPEVE) $(PREFIX)/ippeveprinter
 	install -m 644 ipp/niimbot-b4.conf $(PREFIX)/niimbot-b4.conf
 	install -m 644 $(PLIST) $(AGENT_DIR)/$(AGENT).plist
 	-launchctl bootout gui/$(GUI_UID)/$(AGENT) 2>/dev/null
@@ -88,7 +95,7 @@ uninstall-ipp:
 	-lpadmin -x $(IPP_QUEUE)
 	-launchctl bootout gui/$(GUI_UID)/$(AGENT) 2>/dev/null
 	rm -f $(AGENT_DIR)/$(AGENT).plist
-	rm -f $(PREFIX)/niimbot-ipp-print $(PREFIX)/niimbot-b4.conf
+	rm -f $(PREFIX)/niimbot-ipp-print $(PREFIX)/ippeveprinter $(PREFIX)/niimbot-b4.conf
 	-rmdir $(PREFIX) 2>/dev/null
 
 # Offline check: PDF -> CUPS raster -> filter -> hexdump of the first packets.

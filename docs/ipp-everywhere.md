@@ -12,8 +12,10 @@ any app (Mac, iPhone, iPad) --IPP/AirPrint--> ippeveprinter (LaunchAgent, port 8
                                                   or /dev/cu.B4-* (Bluetooth Classic)
 ```
 
-- `ippeveprinter` is Apple's stock IPP Everywhere server (`/usr/bin/ippeveprinter`,
-  CUPS 2.3.4). It advertises the printer with DNS-SD (`_ipp._tcp`, subtypes
+- `ippeveprinter` is Apple's IPP Everywhere server. We build our own copy from
+  the CUPS 2.3.6 source (`ippeve/`, see its README) because the 2.3.4 binary
+  in `/usr/bin` rejects chunked Create-Job requests, which is what iOS
+  AirPrint sends. It advertises the printer with DNS-SD (`_ipp._tcp`, subtypes
   `_print,_universal`), validates jobs, spools the document and runs our
   command once per job with the job attributes in `IPP_*` environment variables.
 - `niimbot-ipp-print` (filter/niimbot-ipp-print.c) reads the spool file with
@@ -34,6 +36,7 @@ any app (Mac, iPhone, iPad) --IPP/AirPrint--> ippeveprinter (LaunchAgent, port 8
 | `filter/niimbot.[ch]` | protocol core: packets, page sequence, ACK/status handling, raster validation |
 | `filter/niimbot-ipp-print.c` | ippeveprinter print command + `--probe` |
 | `ipp/niimbot-b4.conf` | printer attributes for `ippeveprinter -a` (media, formats, quality, copies) |
+| `ippeve/` | vendored CUPS 2.3.6 `ippeveprinter.c` + headers, built as `ippeveprinter` |
 | `ipp/local.niimbot.b4-ipp.plist.in` | LaunchAgent template; Makefile substitutes paths/port |
 
 ## Install
@@ -102,7 +105,15 @@ at 128 (crisp text and barcodes, no dithering of photos). PWG `black_1` jobs
   through `NIIMBOT_B4_IPP` over USB: printed correctly (the 49 s job time
   was the printer running out of labels mid-job).
 
-Not yet verified: AirPrint from an iPhone, Bluetooth (the same serial code
+- AirPrint from an iPhone, first attempt: the printer appeared but the only
+  paper size was "Photo Small" (iOS offers `media-col-ready` sizes only; we
+  reported just 100x150) and every Create-Job failed with "Unexpected
+  document data following request". Reproduced with `ipptool` using
+  `TRANSFER chunked`: `/usr/bin/ippeveprinter` (2.3.4) fails, a build of the
+  2.3.6 source against the same libcups passes. Fixed by vendoring 2.3.6
+  (`ippeve/`) and by reporting every preset as ready media.
+
+Not yet verified: a print from an iPhone with the vendored server, Bluetooth (the same serial code
 opens `/dev/cu.B4-*`; RFCOMM connect delay and any Bluetooth privacy prompt
 for a LaunchAgent are unknowns).
 
@@ -126,8 +137,9 @@ all later jobs while it is set and only a web-form change clears it.)
 
 - `ippeveprinter -f` cannot be combined with `-a` (it switches to legacy mode);
   the `-a` default format list is already `image/pwg-raster,image/urf`.
-- macOS's `ippeveprinter` has no `-S` strings option, so media-type names are
-  shown as the keywords (`LabelsBlackMark`).
+- Media-type names are shown as the keywords (`LabelsBlackMark`); the 2.3.6
+  server supports `-S file.strings`, but macOS's PPD generator was not seen
+  to use them, so none is shipped.
 - The old PPD queue (`NIIMBOT_B4`, usb backend on the printer-class interface)
   can stay installed; the IPP path uses the CDC serial interface. Do not print
   to both at once.

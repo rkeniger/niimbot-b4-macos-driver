@@ -35,6 +35,8 @@ Status: **work in progress**. See [PLAN.md](PLAN.md),
   the CUPS raster filter; `niimbot-ipp-print.c` the ippeveprinter print
   command (C, libcups).
 - `ipp/` — printer attributes for `ippeveprinter` and the LaunchAgent template.
+- `ippeve/` — Apple's `ippeveprinter` (CUPS 2.3.6 source, Apache-2.0) built
+  locally because the macOS 2.3.4 binary breaks AirPrint from iOS.
 - `ppd/` — PPD source (`.drv`) compiled with `ppdc`.
 - `tools/niimbot.py` — protocol diagnostics CLI (info / status / rfid / print PNG)
   over the USB serial port. Needs `pillow` and `pyserial` (see `venv`).

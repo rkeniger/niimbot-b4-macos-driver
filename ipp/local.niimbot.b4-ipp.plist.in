@@ -9,7 +9,7 @@
 	<string>local.niimbot.b4-ipp</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/bin/ippeveprinter</string>
+		<string>@PREFIX@/ippeveprinter</string>
 		<string>-a</string>
 		<string>@PREFIX@/niimbot-b4.conf</string>
 		<string>-c</string>

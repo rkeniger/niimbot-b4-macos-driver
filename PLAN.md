@@ -113,8 +113,10 @@ Deliverables:
   queue (PPD generation, jobs, options, copies, Bonjour record) and the
   transport against the real printer read-only. See
   `docs/ipp-everywhere.md`. Installed and printed a real 100x150 label
-  through `NIIMBOT_B4_IPP` (15:11). AirPrint from iOS and Bluetooth
-  untested.
+  through `NIIMBOT_B4_IPP` (15:11). iOS AirPrint failed against the stock
+  2.3.4 ippeveprinter (chunked Create-Job bug); now built from vendored 2.3.6
+  source (`ippeve/`), all presets reported as ready media. iOS retest and
+  Bluetooth pending.
 
 ## Phases
 
