@@ -113,9 +113,8 @@ Deliverables:
   queue (PPD generation, jobs, options, copies, Bonjour record) and the
   transport against the real printer read-only. See
   `docs/ipp-everywhere.md`. Installed and printed a real 100x150 label
-  through `NIIMBOT_B4_IPP` (15:11). Open: job took ~49 s, i.e. the
-  completion poll likely timed out over serial; AirPrint from iOS and
-  Bluetooth untested.
+  through `NIIMBOT_B4_IPP` (15:11). AirPrint from iOS and Bluetooth
+  untested.
 
 ## Phases
 
@@ -155,7 +154,7 @@ Goal: remove every hardware unknown before writing the filter.
 ### 5 — IPP Everywhere / AirPrint (done 2026-09-07, see docs/ipp-everywhere.md)
 - ippeveprinter LaunchAgent + `niimbot-ipp-print` command; queue created with
   `lpadmin -m everywhere`. First real label printed. iPhone AirPrint and
-  Bluetooth still to be tried; check why completion polling ran ~45 s.
+  Bluetooth still to be tried.
 
 ### Later / out of scope
 - B4 Pro (300 dpi, id 6657), a generic model table for other Niimbot printers,

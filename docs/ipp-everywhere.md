@@ -99,12 +99,8 @@ at 128 (crisp text and barcodes, no dithering of photos). PWG `black_1` jobs
   pdl=image/pwg-raster,image/urf URF=CP99,IS1,PQ3-4-5,RS203,V1.4,W8`.
 
 - 2026-09-07 15:11: `sudo make install-ipp` and a real 100x150 ruler label
-  through `NIIMBOT_B4_IPP` over USB: printed correctly. The job took 48.7 s
-  to complete, which is about the completion-poll budget (30 + 15 s) plus
-  the fixed waits, so the PrintStatus polling probably ran to its timeout
-  instead of seeing page-done over the serial port. Harmless (the label was
-  already out) but worth a look with `NIIMBOT_DEBUG=1` in the plist:
-  the `DEBUG: << b3 ...` lines show what the printer reports.
+  through `NIIMBOT_B4_IPP` over USB: printed correctly (the 49 s job time
+  was the printer running out of labels mid-job).
 
 Not yet verified: AirPrint from an iPhone, Bluetooth (the same serial code
 opens `/dev/cu.B4-*`; RFCOMM connect delay and any Bluetooth privacy prompt

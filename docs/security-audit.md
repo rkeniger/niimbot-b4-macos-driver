@@ -22,7 +22,8 @@ to the printer. Untrusted inputs are:
 - `clang --analyze` (clean before and after).
 - AddressSanitizer + UndefinedBehaviorSanitizer build run against crafted
   raster headers (cases A–J, generator now in `tools/craft_rasters.py`) and a flooding back-channel
-  (`build/flood.py`).
+  (`tools/flood.py`, rewritten 2026-09-07 after the original was lost; it now
+  also feeds every expected acknowledgement so the completion poll runs).
 
 ## Findings and fixes
 
@@ -32,7 +33,7 @@ to the printer. Untrusted inputs are:
 | 2 | High | `cupsBytesPerLine` smaller than the row implied by `cupsWidth` → **heap over-read** of the line buffer in both the 1-bit `memcpy` (line 405) and the 8-bit loop. | Require `bpl >= rowbytes` (1-bit) / `bpl >= cols` (8-bit); reject `bpl == 0` or > 64 KiB. |
 | 3 | Medium | `send_packet` truncated `len` to a byte. A row of 250 data bytes made a 256-byte payload whose length byte wrapped to 0, silently corrupting the protocol stream. | Cap `rowbytes` at 249 and make `send_packet` abort on `len > 255`. |
 | 4 | Medium | Huge `NumCopies` produced a multi-hour (`useconds_t`-overflowing) sleep in the no-ACK completion wait → job hang. | Reject `copies > 999`; replace `usleep` with a bounded `nanosleep` helper. |
-| 5 | Medium | Deadlines were decremented per read slice, so a device streaming unsolicited packets kept `transceive` and the completion wait alive forever → **filter hang / queue DoS** (reproduced with the flood test). | All deadlines now use `CLOCK_MONOTONIC`. Flood test completes in ~14 s. |
+| 5 | Medium | Deadlines were decremented per read slice, so a device streaming unsolicited packets kept `transceive` and the completion wait alive forever → **filter hang / queue DoS** (reproduced with the flood test). | All deadlines now use `CLOCK_MONOTONIC`. Flood test: filter exits after ~51 s (sum of its timeouts) under a 1.7 MB flood. |
 | 6 | Low | Zero-size pages (`cupsWidth`/`cupsHeight` = 0) were sent to the printer as a bogus page. | Rejected as "Empty page". |
 | 7 | Low | Unsupported color spaces / bit-depth combinations were only partly checked. | Explicit whitelist: 1-bit or 8-bit, K/W/SW gray. |
 
