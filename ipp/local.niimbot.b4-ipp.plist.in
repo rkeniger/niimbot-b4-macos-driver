@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- IPP Everywhere / AirPrint front end for the NIIMBOT B4.
+	     Formats default to image/pwg-raster,image/urf (-f cannot be combined with -a).
+	     Installed by "sudo make install-ipp" (Makefile substitutes @PREFIX@ etc.). -->
+	<key>Label</key>
+	<string>local.niimbot.b4-ipp</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/bin/ippeveprinter</string>
+		<string>-a</string>
+		<string>@PREFIX@/niimbot-b4.conf</string>
+		<string>-c</string>
+		<string>@PREFIX@/niimbot-ipp-print</string>
+		<string>-r</string>
+		<string>_print,_universal</string>
+		<string>-p</string>
+		<string>@PORT@</string>
+		@HOSTARGS@
+		<string>@NAME@</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<!-- auto | usb | bluetooth | /dev/cu.xxx -->
+		<key>NIIMBOT_DEVICE</key>
+		<string>auto</string>
+		<!-- density used for print-quality=normal (1..5) -->
+		<key>NIIMBOT_DENSITY</key>
+		<string>3</string>
+		<!-- label sensor when the job does not say: 1 gap, 2 black mark, 5 transparent -->
+		<key>NIIMBOT_LABEL_TYPE</key>
+		<string>1</string>
+	</dict>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>StandardOutPath</key>
+	<string>/tmp/niimbot-ipp.log</string>
+	<key>StandardErrorPath</key>
+	<string>/tmp/niimbot-ipp.log</string>
+</dict>
+</plist>

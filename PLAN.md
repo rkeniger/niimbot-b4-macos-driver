@@ -100,6 +100,23 @@ Deliverables:
   shows sizes/options and prints correctly. 11 labels used in total.
 - Phase 4 packaging: `make install` / `make uninstall`; `.pkg` not started.
 
+## Status (2026-09-07): IPP Everywhere front end
+
+- Protocol core split into `filter/niimbot.[ch]` (transport-agnostic I/O
+  callbacks); `rastertoniimbot` output verified byte-identical on all test
+  rasters.
+- `filter/niimbot-ipp-print.c`: ippeveprinter print command reading PWG /
+  Apple raster, talking to the printer over the USB CDC or Bluetooth serial
+  port, with `--probe`. `ipp/niimbot-b4.conf` printer attributes, LaunchAgent
+  template, `make install-ipp` / `uninstall-ipp`.
+- Verified offline against a local ippeveprinter + `lpadmin -m everywhere`
+  queue (PPD generation, jobs, options, copies, Bonjour record) and the
+  transport against the real printer read-only. See
+  `docs/ipp-everywhere.md`. Installed and printed a real 100x150 label
+  through `NIIMBOT_B4_IPP` (15:11). Open: job took ~49 s, i.e. the
+  completion poll likely timed out over serial; AirPrint from iOS and
+  Bluetooth untested.
+
 ## Phases
 
 ### 0 — Scaffold
@@ -135,9 +152,15 @@ Goal: remove every hardware unknown before writing the filter.
   (`/var/log/cups/error_log`, `LogLevel debug`).
 - Optional later: `.pkg` installer, code signing.
 
-### Later / out of scope for v1
-- Bluetooth transport, B4 Pro (300 dpi, id 6657), a generic model table for
-  other Niimbot printers, RFID/label-remaining reporting, calibration button.
+### 5 — IPP Everywhere / AirPrint (done 2026-09-07, see docs/ipp-everywhere.md)
+- ippeveprinter LaunchAgent + `niimbot-ipp-print` command; queue created with
+  `lpadmin -m everywhere`. First real label printed. iPhone AirPrint and
+  Bluetooth still to be tried; check why completion polling ran ~45 s.
+
+### Later / out of scope
+- B4 Pro (300 dpi, id 6657), a generic model table for other Niimbot printers,
+  RFID/label-remaining reporting (could feed `media-col-ready` / supplies),
+  calibration button, dithering for 8-bit AirPrint input, a `.pkg` installer.
 
 ## Decisions (grill-me, 2026-09-04)
 
@@ -159,3 +182,15 @@ Goal: remove every hardware unknown before writing the filter.
 | Repo | `git init` here, MIT, publish to GitHub later; upstream printhead width to hass-niimbot / niimbluelib. |
 | Install | `make install` / `make uninstall` with sudo; signed `.pkg` is later polish. |
 | Python prototype | Kept as `tools/niimbot.py` diagnostics CLI (info / status / rfid / print-png over serial). |
+
+## Decisions (IPP front end, 2026-09-07)
+
+| Topic | Decision |
+| --- | --- |
+| Server | Apple's stock `/usr/bin/ippeveprinter` (`-a` attribute file, `-c` command) rather than PAPPL/LPrint: no dependencies, already on every Mac. |
+| Transport | The command opens the serial port itself (USB CDC `/dev/cu.usbmodemB4*`, Bluetooth `/dev/cu.B4-*`); ippeveprinter's `-D` URIs have no read path for ACKs. `TIOCEXCL` on the port. |
+| Formats | Advertise PWG raster (`black_1`,`sgray_8`) and Apple raster (`W8`). macOS picks URF; 8-bit input is thresholded at 128. |
+| Options | Quality → density (draft 2, normal `NIIMBOT_DENSITY`, high 5); media-type → label type (`labels`, `labels-black-mark`, `transparency`). Vendor `print-darkness` not used: macOS would not show it. |
+| Copies | `copies-supported 1-99`; `IPP_COPIES` wins, raster `NumCopies` is the fallback. |
+| Errors | Same `ERROR:`/`STATE:` messages as the filter; out-of-labels reported as `media-needed` (ippeveprinter blocks on `media-empty`). Pages wider than 110 mm refused. |
+| Install | `/Library/Printers/NIIMBOT` + `/Library/LaunchAgents/local.niimbot.b4-ipp.plist` (user session, port 8631, log `/tmp/niimbot-ipp.log`); queue `NIIMBOT_B4_IPP`. `IPP_HOST=localhost` keeps it off the LAN. |

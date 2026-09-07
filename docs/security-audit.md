@@ -21,7 +21,7 @@ to the printer. Untrusted inputs are:
 - Manual review of `filter/rastertoniimbot.c`.
 - `clang --analyze` (clean before and after).
 - AddressSanitizer + UndefinedBehaviorSanitizer build run against crafted
-  raster headers (`build/craft.py` cases A–J) and a flooding back-channel
+  raster headers (cases A–J, generator now in `tools/craft_rasters.py`) and a flooding back-channel
   (`build/flood.py`).
 
 ## Findings and fixes
@@ -57,3 +57,25 @@ to the printer. Untrusted inputs are:
 - The filter trusts `cupsRasterReadPixels` to honour `cupsBytesPerLine`.
 - No fuzzing of the raster *pixel* stream was done; the pixel path only
   copies/thresholds a validated number of bytes.
+
+## Addendum: IPP Everywhere command (2026-09-07)
+
+`niimbot-ipp-print` shares `filter/niimbot.c` with the filter, so the raster
+header validation above applies unchanged (the refactor was checked
+byte-for-byte against the crafted cases A–J). Differences in the threat model:
+
+- **Network exposure.** `ippeveprinter` listens on all interfaces by default
+  and advertises via DNS-SD, so anyone on the LAN can submit jobs (AirPrint's
+  design). Spool files are untrusted: PWG/Apple raster from arbitrary clients
+  goes through the same header checks; a page wider than 880 px is refused
+  before any printer traffic. `make install-ipp IPP_HOST=localhost` restricts
+  the server to loopback. ippeveprinter itself is Apple-maintained code
+  running as the logged-in user, not root.
+- **Job attributes** arrive as environment variables. Only `IPP_COPIES`
+  (`atoi`, bounded by the core to 1–999), `IPP_PRINT_QUALITY` and the
+  `media-type` keyword scanned out of `IPP_MEDIA_COL` (bounded copy into a
+  64-byte buffer, `[A-Za-z0-9_.-]` only) are used.
+- **Serial port.** Opened with `TIOCEXCL`; device replies are parsed by the
+  same bounded frame parser. The device path comes from `glob(3)` of fixed
+  patterns or the operator-set `NIIMBOT_DEVICE`.
+- `clang --analyze` clean on all three C files.
